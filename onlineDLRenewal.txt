@@ -1,0 +1,342 @@
+
+RIMS Interface Technical Specification
+
+Online Driver’s License Renewal 
+Version 1.6
+
+
+
+
+Purpose: 	Technical Specification for facilitating Online Driver’s License Renewal for RI DMV customer through DMV website
+Author:			Ram Ramakrishna, HP
+Audience: 		Developers, Testers, Third Parties, Trainers 
+Inputs: 			I38A – Interface Spec-L1 Issuance
+                                           HLD-II-201-Operator License V.1.14.docx
+
+
+
+Version History
+Ver. No.	Ver. Date	Revised By	Description
+1.0	10/09/2014	HP 	Initial Draft
+1.1	01/05/2016	HPE-Bhim Rathor	DMV feedback added
+1.2	01/1/2016	HPE-Bhim Rathor	Updated based on Joe’s feedback
+1.3	3/3/2016	HPE-Bhim Rathor	Added Disabled Veteran flag
+1.4	7/6/2016	RI DoIT – Nicole Barnett	Update TOC Formatting on 4/13/2016, Update per Business Review on 7/6/2016
+1.5	10/17/2016	DoIT	Add New Toll Block 
+1.6	03/07/2017	DoIT-C.Naik	Section 7 for License Restrictions
+
+
+
+
+
+Table of contents
+1.	Overview	3
+2.	Architecture Diagram	3
+Communication Mechanism	3
+3.	Message Description	5
+Online DL Renewal Identification Message	5
+Input Message Fields (RI.GovRIMS)	5
+Response Message Fields (RIMSRI.Gov)	5
+4.	Business Rules	8
+5.	Online DL Renewal Commit Message	10
+Input Message Fields (RI.GovRIMS)	10
+Response Message Fields (RIMSRI.Gov)	10
+6.	Business Rules	11
+7.	Sample Message	12
+8.	Additional Requirements	14
+Logging	14
+Technical Contacts	14
+
+ 
+1.	Overview 
+This document will serve to describe the technical details of the web service interface between the RI.Gov and the RI DMV for allowing Online Driver’s License Renewal for RI DMV customer via DMV website.
+2.	Architecture Diagram
+Communication Mechanism
+The interface will be implemented via web service. The service will expose the appropriate web method and will be used to receive and return SOAP messages. The interface will receive and process the SOAP messages and respond with additional information based on business rules.
+
+ 
+Figure 0-1: Context Diagram
+
+The RIMS interface will expose two web server methods for Online DL Renewal Identification and Online DL Renewal Commit.
+
+Online DL Renewal Identification – This web method is used to perform customer identification and validation in RIMS database based of input parameters. 
+
+Online DL Renewal Commit – This web method is used to perform actual driver license renewal using Online DL Renewal Identification Method.
+
+   
+
+
+
+3.	Message Description
+Online DL Renewal Identification Message
+Input Message Fields (RI.GovRIMS)
+Field Name	Field Description
+License number	Driver’s license number that needs to be renewed
+Last name	Operator’s last name
+Date of birth	Operator’s date of birth
+Zip code	Operator’s zip code
+
+Response Message Fields (RIMSRI.Gov)
+Field Name	Field Description
+Eligibility Response Code	Numeric response code that indicates the following:
+00 – Missing Mandatory fields
+01 – Eligible for renewal
+02 – No license record was found matching your input
+03 – Record Error
+04 – Driver License number is invalid
+05 – Too Early to Renew
+06 – Too Late to Renew
+07 – SSN Verification Failed
+08  - CDL
+09 – ID Card Assigned
+10 – PDPS Match
+11 – CDLS Match
+12 – Income Tax
+13 – Temporary License  
+14 – Military License
+15 – Consecutive Renewal
+16 – Failed Age Requirement
+17 - A new photo is required
+18- Suspended License
+19 – Insurance
+20 – Learner Permit 
+21 – Toll Block
+99 – Default DMV Error  
+License number	Driver’s license number that needs to be renewed. As received in input record.  
+Last name	Operator’s last name. As received in input record.
+Date of birth	Operator’s date of birth. As received in input record.
+Zip code	Operator’s zip code. As received in input record.
+First Name	First Name form matching customer record
+Current Street Address	Street1 + Street2 from matching customer record
+Current City	Current City 
+Current State	Current State from Customer record.
+Current Zip 	Current Zip from Customer record.
+Current Mailing Street Address	Mailing Street1 + Street2 from matching customer record
+Current Mailing City	Mailing Current City 
+Current Mailing State	Mailing Current State from Customer record.
+Current Mailing Zip 	Mailing Current Zip from Customer record.
+Statutory  Renewal Fee	Statutory fee, numeric value with 2 decimal places.  Only for transactions that are eligible for renewal, otherwise null value is returned.
+DMV Technology Fee	Technology fee, numeric value with 2 decimal places.  Only for transactions that are eligible for renewal, otherwise null value is returned
+DOT Surcharge Fee	Surcharge fee, numeric value with 2 decimal places.  Only for transactions that are eligible for renewal, otherwise null value is returned
+Next License Expiration Date	Date in mmddyyyy format, which will be the date of next expiration, if the license were to be successfully renewed.  Only for transactions that are eligible for renewal, otherwise null value is returned
+License Restriction 	List of restriction on Customer record.
+License Endorsements	List of endorsements on the Customer record.
+Gender Code	Gender code for matching customer record
+M-Male
+F-Female
+U-Unknown
+Current Expiration 	Current expiration date on matching license
+Veteran Designation	Veteran Status on License
+True- Veteran
+False – Non Veteran
+Disabled Veteran Designation	Disabled Veteran Status on License
+True- Disabled Veteran
+False – Not a Disabled Veteran
+ 
+  
+
+4.	Business Rules
+Business Rule#	Business Rule Description
+1	Following fields are mandatory in input record.
+•	License number
+•	Last name
+•	Date of birth
+•	Zip code
+If input record fails this validation, the system will return 00 – Missing Mandatory fields as the response code.
+2	If the given input fields is found with an error, the system will return ‘03 as the response code.
+If DOB is not with the given format mm/dd/yyyy
+Zip code with ‘5’ integers
+Customer Last Name, DOB and Zip code will be validated first.
+3	If the given license number is found invalid, then the system will return 04 as the response code. If the License is <> 7 or 8 integers then the license number is considered to be invalid.
+4	RIMS will use following fields to find a matching customer in RIMS
+•	License number  (Include match on CDL\State ID\Learner Permit while matching on License Number)
+•	Last name
+•	Date of birth
+•	Zip code
+If no record is found RIMS will return 02 – No license record was found matching your input as the response code.
+5	If the customer holds an Active Driver License, the customer can renew their license up to 90 days prior to the expiration date of the license. If the user starts this transaction more than 90 days before the expiration date, the system will return 05 – Too Early to Renew as the response code .  
+6	If the customer’s Driver license has been expired for 5 years or more, the system will return 06 – Too Late to Renew as the response code .  
+7	System will check if customer have an SSN on record and has not been successfully verified with SSOLV in past. If Not, the system will initiate SSOLV interface to check the SSN associated with the customer’s record. If the SSOLV fails to verify SSN the system will return 07 – SSN Verification Failed as the response code.
+8	If the matching license record is an active CDL in RIMS, the system will return 08 - CDL as the response code.
+9	If the matching license record is an active State ID in RIMS, the system will return 09 - ID Card as the response code.
+10	RIMS will perform the PDPS check on the matching license record. If any hit with DL Eligibility status as Not Eligible or Reported Deceased (RPD) is found in PDPS system  , RIMS will return 10 – PDPS Match as the response code.   
+11	RIMS will perform the CDLIS check on the matching license record. If any hit with DL Eligibility status as Not Eligible or Reported Deceased (RPD) is found in CDLIS system, RIMS will return 11 – CDLIS Error Match as the response code  .
+12	If an Income Tax Block is found on customer record the system will return 12 – Income Tax Block record as the response code.
+13	If the user is on temporary status (all Non-US citizens – including permanent residents) the system will 13 – Temporary License as the response code .
+14	If the user is on military status, the system will) the system will return 14– Military License as the response code .
+15	If the user renewed online during the last five-year renewal period, system will return 15 – Consecutive renewal as the response code.
+16	RIMS will perform the upper age requirement check based on  the defined in underlying DL renewal transaction, if the validation fails the system will return 16 – Cannot be renewed online as the response code.
+17	For a matching customer, RIMS will check if a recently issued Photo is available in Morpho record. If a Photo is available it must not be more than 5 Years and 90 days older.   
+If record fails this validation, RIMS will return 17 – Photo validation fail as the response code.
+18	If an Active DL Suspension is found on customer record the system will return 18 – Suspended License record as the response code.
+19	If an active ‘ZM’ block is found on the customer record the system will return 19 - Insurance as the response code.
+20	If the matching license record is a Learner Permit, the system will return 20 – Learner Permit as the response code.
+21	If an active Toll block is found on the customer record the system will return 21 – Toll Block, as the response code.
+22	In the case of technical error on RIMS side, the system will return 99 – DMV Error as the response code
+23	If none of the above error found on matching customer record, RIMS will return 01 – Eligible for renewal as the response code. 
+RIMS will also return following fields:
+•	First Name - First Name form matching customer record
+•	Current Street Address - Street1 + Street2 from matching customer record
+•	Current City - Current City 
+•	Current State - Current State from Customer record.
+•	Current Zip - Current Zip from Customer record.
+•	Current Mailing Street Address - Street1 + Street2 from matching customer record
+•	Current Mailing City - Current City 
+•	Current Mailing State - Current State from Customer record.
+•	Current Mailing Zip - Current Zip from Customer record.
+•	Statutory Renewal Fee – The DL Renewal fee for the matching DL Record.
+•	Gender Code – Gender code of matching customer
+•	Veteran Indicator – Veteran Indicator
+•	Current Expiration Date- Current Expiration date on matching license
+•	Restrictions- List of Restrictions on Customer Record
+•	DMV Technology Fee – DMV Technology Fee  
+•	DOT Surcharge Fee – DOT Surcharge
+•	Next License Expiration Date – The Expiration date that will be on renewed license.
+
+
+5.	Online DL Renewal Commit Message
+Input Message Fields (RI.GovRIMS)
+Field Name  	Field Description
+License Number	Driver’s license number that needs to be renewed
+Last Name	Operator’s last name
+Date of Birth	Operator’s date of birth
+Zip Code	Operator’s zip code
+Organ Donor	Customer’s response on whether the customer wants to be an organ donor
+Voter Registration	Customer’s response on whether the customer wants to register to vote
+Party Affiliation	Customer response on the corresponding party affiliation
+Transaction Date Time	Transaction Date Time 
+Transaction ID	Transaction identification number
+Prohibit disclosure of personal information	True
+False
+
+Response Message Fields (RIMSRI.Gov)
+Field Name	Field Description
+Transaction Response Code	Numeric response code that indicates the following:
+00 – Unable to renew license
+01 – Renewal successful
+Renewal Status Code	Renewal Status code from Online DL Renewal Identification
+Transaction Number	Unique sequential number generated by RIMS if the transaction is successful
+License Expiration Date	Date in mmddyyyy format, the expiration date calculated by RIMS upon renewal of the license
+License Number	Driver’s license number that needs to be renewed. As received in input record.
+Last Name	Operator’s last name. As received in input record.
+Date of Birth	Operator’s date of birth. As received in input record.
+Zip Code	Operator’s zip code. As received in input record.
+
+6.	Business Rules
+Business Rule#
+Business Rule Description
+1	The following fields are mandatory in input record.
+•	License Number
+•	Last Name
+•	Date of Birth
+•	Zip Code
+•	Organ Donor
+•	Voter Registration
+•	Party Affiliation(Only when Voter Registration is Yes)
+If input record fails this validation, the system will return 00 – Unable to renew license as the Transaction response code and 00 as the Renewal Status Code.
+2	If all mandatory fields are provided in request message, RIMS will run the License Renewal Verification message internally.
+If the response code for the License Renewal Verification message is not 01, the system will return 00 – Unable to renew license as the Transaction response code and Renewal Status Code as generated by the License Renewal Verification.
+3	If the response code returned by the License Renewal Verification is 01, RIMS will renew the license. In additional to renewal RIMS will also update the Voter Registration and Organ Donor choice of the customer as received in the License Renewal Commit message.
+4	Upon License renewal, RIMS will send the Print Credential Request to the Morpho System. For the Print Credential Request, RIMS will use the Most Recently Issue Photo on the customer record.
+The RIMS transaction type will be DL Renewal, and the user assigned to the transaction will be RI.gov to represent the transaction was done online.
+5	If RIMS is successfully able to renew the license of matching customer, it will return the Transaction Number and License Expiration date in the Response message, otherwise these two field will be left blank in response message. 
+
+
+7.	Sample Message
+7.1.	License Renewal Verification XML Message
+
+7.1.1.	Inquiry Message
+     <hp:LicenseRenewalIdentificationInquiry>
+         <hp:renewalIdentificationInquiry>
+            <hp1:DateofBirth>?</hp1:DateofBirth>
+            <hp1:LastName>?</hp1:LastName>
+            <hp1:LicenseNumber>?</hp1:LicenseNumber>
+            <hp1:ZipCode>?</hp1:ZipCode>
+         </hp:renewalIdentificationInquiry>
+      </hp:LicenseRenewalIdentificationInquiry> 
+
+7.1.2.	 Response Message
+    <LicenseRenewalIdentificationInquiryResponsexmlns="HP.Comet.External.Inbound.Services.Contracts">
+<LicenseRenewalIdentificationInquiryResult xmlns:a="HP.Comet.External.Inbound.Data.Contracts" xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+            <a:CurrentExpiration>?</a:CurrentExpiration>
+            <a:CurrentMailingAddress>
+               <a:City>?</a:City>
+               <a:State>?</a:State>
+               <a:StreetAddress>?</a:StreetAddress>
+               <a:ZipCode>?</a:ZipCode>
+            </a:CurrentMailingAddress>
+            <a:CurrentPhysicalAddress>
+               <a:City>?</a:City>
+               <a:State>?</a:State>
+               <a:StreetAddress>?</a:StreetAddress>
+               <a:ZipCode>?</a:ZipCode>
+            </a:CurrentPhysicalAddress>
+            <a:DLEndorsements xmlns:b="HP.Comet.Business.Driver.Data.Contracts">
+            <b:DLEndorsement xmlns:c="http://schemas.microsoft.com/2003/10/Serialization/Arrays">
+                  <c:string>M</c:string>
+                  
+            </b:DLEndorsement>
+            </a:DLEndorsements>
+            <a:DLRestrictions xmlns:b="HP.Comet.Business.Driver.Data.Contracts">
+            <b:DLRestriction xmlns:c="http://schemas.microsoft.com/2003/10/Serialization/Arrays">
+                  <c:string>?</c:string
+            </b:DLRestriction>
+            </a:DLRestrictions>
+            <a:DateofBirth>?</a:DateofBirth>
+            <a:DisabledVeteran>?</a:DisabledVeteran>
+            <a:EligibilityResponseCode>?</a:EligibilityResponseCode>
+            <a:FirstName>?</a:FirstName>07/02
+            <a:GenderCode>?</a:GenderCode>
+            <a:LastName>?</a:LastName>
+            <a:LicenseNumber>?</a:LicenseNumber>
+            <a:NextLicenseExpirationDate>?</a:NextLicenseExpirationDate>
+            <a:RenewalFee>
+               <a:DmvTechnologyFee>?</a:DmvTechnologyFee>
+               <a:DotSurchargeFee>?</a:DotSurchargeFee>
+               <a:StatutoryRenewalFee>?</a:StatutoryRenewalFee>
+            </a:RenewalFee>
+            <a:VeteranDesignation>?</a:VeteranDesignation>
+            <a:ZipCode>?</a:ZipCode>
+         </LicenseRenewalIdentificationInquiryResult>
+      </LicenseRenewalIdentificationInquiryResponse>
+   
+License Renewal Commit XML Message
+7.1.3.	Inquiry Message
+      <hp:LicenseRenewalCommitRequest>
+         <hp:renewalCommitRequest>
+        <hp1:DateofBirth>?</hp1:DateofBirth>
+        <hp1:LastName>?</hp1:LastName>
+        <hp1:LicenseNumber>?</hp1:LicenseNumber>
+        <hp1:OrganDonor>?</hp1:OrganDonor>
+            <hp1:PartyAffiliation>?</hp1:PartyAffiliation>             <hp1:ProhibitDisclosureOfPersonalInformation>?</hp1:ProhibitDisclosureOfPersonalInformation>
+         <hp1:TransactionDateTime>?</hp1:TransactionDateTime>          <hp1:TransactionId>?</hp1:TransactionId>
+           <hp1:VoterRegistration>?</hp1:VoterRegistration>
+           <hp1:ZipCode>?</hp1:ZipCode>
+           </hp:renewalCommitRequest>
+           </hp:LicenseRenewalCommitRequest>
+
+7.1.4.	Response Message
+<LicenseRenewalCommitRequestResponse xmlns="HP.Comet.External.Inbound.Services.Contracts">
+<LicenseRenewalCommitRequestResult xmlns:a="HP.Comet.External.Inbound.Data.Contracts" xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+            <a:DateOFBirth>?</a:DateOFBirth>
+            <a:LastName>?</a:LastName>
+            <a:LicenseExpirationDate>?</a:LicenseExpirationDate>
+            <a:LicenseNumber>?</a:LicenseNumber>
+            <a:RenewalStatusCode>?</a:RenewalStatusCode>
+            <a:TransactionNumber>?</a:TransactionNumber>
+            <a:TransactionResponseCode>?</a:TransactionResponseCode>
+            <a:ZipCode>?</a:ZipCode>
+         </LicenseRenewalCommitRequestResult>
+      </LicenseRenewalCommitRequestResponse> 
+
+8.	Additional Requirements
+Logging
+Every Inbound and outbound message will be archived by RIMS for logging purposes at the framework level. Please Refer to RIMS Interface Technical Specification-Common Feature for more details.
+Technical Contacts
+Hewlett-Packard:  
+
+Bhim Rathor
+Email: bhim.rathor@hp.com
+Phone: 401-462-5717
+Cell: 319-202-8798
+
